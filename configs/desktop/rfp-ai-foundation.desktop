@@ -1,0 +1,8 @@
+[Desktop Entry]
+Version=1.0
+Name=RFP AI Foundation
+Comment=Start the local RFP AI foundation stack
+Type=Application
+Exec=/home/admin/rfp-ai-foundation/scripts/start-foundation.sh
+Terminal=false
+Categories=Development;

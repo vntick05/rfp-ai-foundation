@@ -4,6 +4,7 @@
 
 This checkpoint establishes only the runtime foundation:
 
+- `portainer` for local container visibility and stack management
 - `postgres` for persistent relational storage
 - `orchestrator-api` as the future coordination boundary
 - `model-service` as the future local inference boundary
@@ -42,11 +43,26 @@ Purpose:
 - remain independent from inference runtime choices
 - use a Docker-managed persistent volume in this foundation checkpoint for reliability
 
+### `portainer`
+
+Purpose:
+
+- provide an open source operational UI for the local Docker environment
+- inspect containers, logs, volumes, networks, and stack status while the platform is being built
+- reduce the need for a custom admin UI during early platform construction
+
+Non-goals:
+
+- not a replacement for application UI
+- not a replacement for infrastructure-as-code
+- not a production control plane for remote multi-user administration
+
 ## Container Topology
 
 Base compose:
 
 - runs on a standard Docker host
+- includes Portainer CE for local stack inspection
 - keeps GPU concerns out of the default path
 
 GPU override compose:

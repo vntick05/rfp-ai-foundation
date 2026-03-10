@@ -1,4 +1,14 @@
 services:
+  portainer:
+    image: portainer/portainer-ce:lts
+    container_name: rfp-foundation-portainer
+    restart: unless-stopped
+    ports:
+      - "${PORTAINER_PORT:-19443}:9443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer-data:/data
+
   postgres:
     image: postgres:16-alpine
     container_name: rfp-foundation-postgres
@@ -79,4 +89,5 @@ services:
       start_period: 10s
 
 volumes:
+  portainer-data:
   postgres-data:

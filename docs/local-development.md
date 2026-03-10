@@ -26,6 +26,7 @@ Review:
 - exposed ports
 - Postgres credentials
 - compose project name
+- Portainer UI port
 
 ## Running the Stack
 
@@ -41,6 +42,18 @@ GPU-enabled stack:
 make up-gpu
 ```
 
+Portainer runs as part of the normal stack. It is a local operator tool for:
+
+- viewing containers and stack status
+- reading container logs
+- inspecting volumes and networks
+- confirming what is running without building a custom UI
+
+Desktop launcher:
+
+- a launcher template is stored at `configs/desktop/rfp-ai-foundation.desktop`
+- the local desktop icon can start the stack in a terminal by running `scripts/start-foundation.sh`
+
 ## Basic Validation
 
 ```bash
@@ -48,7 +61,26 @@ curl http://localhost:18010/healthz
 curl http://localhost:18010/readyz
 curl http://localhost:18011/healthz
 docker compose ps
+make portainer-url
 ```
+
+Then open `https://localhost:19443`.
+
+## First-Time Portainer Setup
+
+1. Open `https://localhost:19443`
+2. Accept the local self-signed certificate warning in the browser
+3. Create the initial Portainer admin user
+4. Select the local Docker environment when prompted
+5. Open the `Containers`, `Volumes`, `Networks`, and `Stacks` views
+
+## Local Security Assumptions
+
+- Portainer is added for local development only
+- the UI is exposed on the local machine and should not be published to untrusted networks
+- Portainer stores its state in the Docker volume `rfp-ai-foundation_portainer-data`
+- Portainer has Docker socket access so it can inspect and manage the local stack
+- this is intentionally convenient for local development and should be revisited before any shared or remote deployment
 
 ## Shutdown
 
@@ -57,6 +89,7 @@ make down
 ```
 
 Postgres persistence is stored in the Docker volume `rfp-ai-foundation_postgres-data`.
+Portainer persistence is stored in the Docker volume `rfp-ai-foundation_portainer-data`.
 
 ## Notes on Future TensorRT-LLM Support
 

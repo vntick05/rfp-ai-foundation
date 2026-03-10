@@ -45,3 +45,67 @@ Recommended commit message:
 ```text
 chore: initialize local container foundation for RFP AI platform
 ```
+
+## Checkpoint 2: Portainer Integration
+
+Definition:
+
+- Portainer CE added to the local compose stack
+- Portainer persistent volume configured
+- local management UI exposed on a dedicated port
+- docs updated for local operational workflow and security assumptions
+
+Verify locally:
+
+1. `make up`
+2. `make ps`
+3. `make portainer-url`
+4. Open `https://localhost:19443`
+5. Create the initial Portainer admin user
+6. Confirm the local Docker environment is visible
+7. Inspect the `rfp-ai-foundation` containers, volumes, and network
+
+Intentionally still not built:
+
+- custom admin UI
+- observability stack beyond Portainer
+- application features
+- agents
+- parsing
+- RAG
+
+Recommended commit message:
+
+```text
+chore: add portainer for local container management
+```
+
+## Checkpoint 3: Portainer Save Point And Desktop Launcher
+
+Definition:
+
+- Portainer integration committed as a clean save point
+- desktop launcher script added to start the local stack with the repo workflow
+- desktop entry template stored in the repo and installed to the local desktop
+
+Verify locally:
+
+1. Double-click the desktop launcher
+2. Confirm a terminal opens in the project directory
+3. Confirm `make up` completes
+4. Confirm `make ps` shows the four foundation services
+5. Open Portainer at `https://localhost:19443`
+
+Intentionally still not built:
+
+- application UI
+- parsing
+- inference features
+- agents
+- workflow logic
+
+Recommended commit message:
+
+```text
+chore: add portainer save point and desktop launcher
+```

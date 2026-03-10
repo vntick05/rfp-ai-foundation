@@ -57,3 +57,17 @@ Alternatives still possible:
 - Open WebUI later
 - a custom operator UI later
 - direct API-first workflows without a web UI
+
+## ADR-002: Portainer for local container management
+
+Reason:
+
+- provides an established open source UI for inspecting the local Docker stack immediately
+- reduces pressure to build a custom operational dashboard early
+- helps validate containers, logs, networks, volumes, and stack state while core platform services are still minimal
+
+What it is not:
+
+- not the application UI
+- not an observability platform
+- not a substitute for future production-grade operational controls
