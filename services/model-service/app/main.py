@@ -5,7 +5,7 @@ from time import monotonic, time
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from app.backends.base import ChatMessage, ChatRequest
 from app.backends.registry import create_backend
@@ -176,13 +176,10 @@ def list_models(request: Request) -> dict[str, object]:
 
 
 @app.post("/v1/chat/completions")
-def chat_completions(request: Request, payload: ChatCompletionRequest) -> dict[str, object]:
+def chat_completions(request: Request, payload: ChatCompletionRequest) -> object:
     backend = app.state.backend
     descriptor = backend.descriptor()
     readiness = backend.readiness()
-
-    if payload.stream:
-        raise HTTPException(status_code=501, detail="Streaming is not implemented in this checkpoint")
 
     if not descriptor.supports_chat:
         raise HTTPException(status_code=501, detail=f"Backend '{descriptor.name}' does not support chat completions")
@@ -197,6 +194,26 @@ def chat_completions(request: Request, payload: ChatCompletionRequest) -> dict[s
     if model_id not in available_models:
         raise HTTPException(status_code=404, detail=f"Model '{model_id}' is not available")
     request.state.model_id = model_id
+
+    if payload.stream:
+        if not descriptor.supports_streaming:
+            raise HTTPException(status_code=501, detail=f"Backend '{descriptor.name}' does not support streaming")
+        return StreamingResponse(
+            backend.chat_stream(
+                ChatRequest(
+                    model=model_id,
+                    messages=[ChatMessage(role=item.role, content=item.content) for item in payload.messages],
+                    max_tokens=payload.max_tokens,
+                    temperature=payload.temperature,
+                    stream=payload.stream,
+                )
+            ),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+            },
+        )
 
     response = backend.chat(
         ChatRequest(

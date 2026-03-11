@@ -210,3 +210,31 @@ Recommended commit message:
 ```text
 feat: harden model-service for internal service-to-service use
 ```
+
+## Checkpoint 7: Model-Service Streaming Responses
+
+Definition:
+
+- `POST /v1/chat/completions` supports `stream=true`
+- the current TensorRT-LLM proxy path forwards streamed responses from the sidecar
+- the mock backend provides a simple OpenAI-style streamed response for local API checks
+- the service boundary stays unchanged
+
+Verify locally:
+
+1. `make up-trtllm`
+2. `docker compose exec orchestrator-api wget -q -O - http://model-service:8011/readyz`
+3. Send streamed `POST /v1/chat/completions` with `stream=true`
+4. Confirm `data:` chunks and a final `data: [DONE]`
+
+Known gaps in this checkpoint:
+
+- app-level timeout handling is still optimized for non-streaming requests
+- streaming is only implemented for backends that support it
+- embedded TensorRT-LLM runtime and engine mode remain deferred
+
+Recommended commit message:
+
+```text
+feat: add streaming chat completions to model-service
+```

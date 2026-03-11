@@ -27,6 +27,7 @@ Current implementation in this checkpoint:
 - `GET /readyz` for backend readiness and model/runtime reporting
 - `GET /v1/models` from active backend state
 - `POST /v1/chat/completions` as the minimal inference boundary
+- streamed `POST /v1/chat/completions` when the active backend supports it
 - structured request logging and request ID propagation for internal callers
 - bounded in-flight request handling and timeout-aware error responses
 
@@ -43,7 +44,6 @@ What is still scaffolded:
 - embedded TensorRT-LLM runtime wiring inside `model-service`
 - vLLM runtime wiring
 - model artifact loading beyond config surfaces
-- streaming responses
 
 Planned future backend options:
 

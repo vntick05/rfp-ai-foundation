@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Protocol
+from typing import Iterator, Protocol
 
 
 @dataclass(frozen=True)
@@ -66,4 +66,7 @@ class ModelBackend(Protocol):
         ...
 
     def chat(self, request: ChatRequest) -> ChatResponse:
+        ...
+
+    def chat_stream(self, request: ChatRequest) -> Iterator[bytes]:
         ...

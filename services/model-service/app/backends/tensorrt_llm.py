@@ -1,4 +1,5 @@
 import json
+from typing import Iterator
 from urllib import error, request as urllib_request
 
 from app.backends.base import (
@@ -25,7 +26,7 @@ class TensorRTLLMBackend(ModelBackend):
             gpu_capable=True,
             implemented=True,
             supports_chat=True,
-            supports_streaming=False,
+            supports_streaming=True,
             status="ready" if ready else "not_ready",
         )
 
@@ -169,6 +170,25 @@ class TensorRTLLMBackend(ModelBackend):
             completion_tokens=int(usage.get("completion_tokens", 0)),
         )
 
+    def chat_stream(self, request: ChatRequest) -> Iterator[bytes]:
+        readiness = self.readiness()
+        if not readiness.ready:
+            raise NotImplementedError(readiness.detail)
+
+        yield from self._request_stream(
+            "/v1/chat/completions",
+            payload={
+                "model": request.model,
+                "messages": [
+                    {"role": message.role, "content": message.content}
+                    for message in request.messages
+                ],
+                "max_tokens": request.max_tokens,
+                "temperature": request.temperature,
+                "stream": True,
+            },
+        )
+
     def _request_json(
         self,
         path: str,
@@ -195,6 +215,42 @@ class TensorRTLLMBackend(ModelBackend):
                 if isinstance(parsed, dict):
                     return parsed
                 raise RuntimeError(f"Unexpected JSON payload from TensorRT-LLM server: {url}")
+        except error.HTTPError as exc:
+            body = exc.read().decode("utf-8", errors="ignore")
+            raise RuntimeError(
+                f"TensorRT-LLM server returned HTTP {exc.code} for {url}: {body}"
+            ) from exc
+        except error.URLError as exc:
+            raise RuntimeError(
+                f"TensorRT-LLM server is not reachable at {url}: {exc.reason}"
+            ) from exc
+
+    def _request_stream(
+        self,
+        path: str,
+        payload: dict[str, object],
+    ) -> Iterator[bytes]:
+        if not self._runtime.serve_base_url:
+            raise RuntimeError("TensorRT-LLM serve_base_url is not configured")
+
+        url = f"{self._runtime.serve_base_url.rstrip('/')}{path}"
+        data = json.dumps(payload).encode("utf-8")
+        req = urllib_request.Request(
+            url=url,
+            data=data,
+            method="POST",
+            headers={
+                "Accept": "text/event-stream",
+                "Content-Type": "application/json",
+            },
+        )
+        try:
+            with urllib_request.urlopen(req, timeout=self._runtime.request_timeout_seconds) as response:
+                while True:
+                    line = response.readline()
+                    if not line:
+                        break
+                    yield line
         except error.HTTPError as exc:
             body = exc.read().decode("utf-8", errors="ignore")
             raise RuntimeError(

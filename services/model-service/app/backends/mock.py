@@ -1,3 +1,4 @@
+import json
 from uuid import uuid4
 
 from app.backends.base import (
@@ -22,7 +23,7 @@ class MockBackend(ModelBackend):
             gpu_capable=False,
             implemented=True,
             supports_chat=True,
-            supports_streaming=False,
+            supports_streaming=True,
             status="ready",
         )
 
@@ -71,3 +72,53 @@ class MockBackend(ModelBackend):
             prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,
         )
+
+    def chat_stream(self, request: ChatRequest):
+        response = self.chat(request)
+        chunk_id = response.id
+        yield self._sse_chunk(
+            {
+                "id": chunk_id,
+                "object": "chat.completion.chunk",
+                "model": response.model,
+                "choices": [
+                    {
+                        "index": 0,
+                        "delta": {"role": "assistant"},
+                        "finish_reason": None,
+                    }
+                ],
+            }
+        )
+        yield self._sse_chunk(
+            {
+                "id": chunk_id,
+                "object": "chat.completion.chunk",
+                "model": response.model,
+                "choices": [
+                    {
+                        "index": 0,
+                        "delta": {"content": response.content},
+                        "finish_reason": None,
+                    }
+                ],
+            }
+        )
+        yield self._sse_chunk(
+            {
+                "id": chunk_id,
+                "object": "chat.completion.chunk",
+                "model": response.model,
+                "choices": [
+                    {
+                        "index": 0,
+                        "delta": {},
+                        "finish_reason": response.finish_reason,
+                    }
+                ],
+            }
+        )
+        yield b"data: [DONE]\n\n"
+
+    def _sse_chunk(self, payload: dict[str, object]) -> bytes:
+        return f"data: {json.dumps(payload)}\n\n".encode("utf-8")

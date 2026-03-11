@@ -25,6 +25,7 @@ Current `model-service` reality:
 - `mock` backend is fully implemented for API smoke tests
 - TensorRT-LLM backend is implemented as a real integration path to a local `trtllm-serve` endpoint
 - end-to-end TensorRT-LLM inference through `model-service` has been verified for `nvidia/Llama-3.3-70B-Instruct-NVFP4`
+- streaming `POST /v1/chat/completions` is supported for the current mock and TensorRT-LLM proxy paths
 - request IDs, structured logs, timeout handling, and bounded in-flight request handling are implemented for internal service use
 - embedded TensorRT-LLM runtime execution inside `model-service` is still not implemented; this checkpoint uses a sidecar `trtllm-serve` runtime
 

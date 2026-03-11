@@ -132,6 +132,7 @@ Implemented now:
 - backend registry and readiness reporting
 - `GET /v1/models`
 - `POST /v1/chat/completions`
+- streaming `POST /v1/chat/completions` when `stream=true`
 - structured JSON request logs
 - request ID propagation with `X-Request-ID`
 - request timeout responses and bounded in-flight request handling
@@ -141,7 +142,6 @@ Not implemented yet:
 
 - embedded TensorRT-LLM runtime execution inside `model-service`
 - vLLM runtime execution
-- streaming completions
 - production model loading and caching policy
 - request authentication and quotas
 
@@ -219,6 +219,12 @@ curl -sS http://localhost:18011/v1/chat/completions \
     "max_tokens": 16,
     "temperature": 0
   }'
+```
+
+TensorRT-LLM streaming verification flow:
+
+```bash
+docker compose exec orchestrator-api python -c "import json, urllib.request; req=urllib.request.Request('http://model-service:8011/v1/chat/completions', data=json.dumps({'model':'nvidia/Llama-3.3-70B-Instruct-NVFP4','messages':[{'role':'user','content':'Reply with exactly: streaming works'}],'max_tokens':16,'temperature':0,'stream':True}).encode(), headers={'Content-Type':'application/json','X-Request-ID':'trt-stream-1'}); resp=urllib.request.urlopen(req, timeout=120); print(resp.read().decode())"
 ```
 
 ## Notes on Future TensorRT-LLM Support
