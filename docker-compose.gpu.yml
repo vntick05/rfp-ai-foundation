@@ -1,3 +1,5 @@
 services:
+  tensorrt-llm:
+    gpus: all
   model-service:
     gpus: all

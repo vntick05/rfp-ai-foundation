@@ -43,6 +43,18 @@ GPU-enabled stack:
 make up-gpu
 ```
 
+GPU-enabled stack with TensorRT-LLM sidecar:
+
+```bash
+make up-trtllm
+```
+
+This command:
+
+- starts the TensorRT-LLM sidecar
+- forces `model-service` onto the `tensorrt_llm` backend
+- keeps the rest of the stack unchanged
+
 Portainer runs as part of the normal stack. It is a local operator tool for:
 
 - viewing containers and stack status
@@ -113,20 +125,71 @@ Implemented now:
 - backend registry and readiness reporting
 - `GET /v1/models`
 - `POST /v1/chat/completions`
+- TensorRT-LLM proxy integration path for `nvidia/Llama-3.3-70B-Instruct-NVFP4`
 
 Not implemented yet:
 
-- TensorRT-LLM runtime execution
+- embedded TensorRT-LLM runtime execution inside `model-service`
 - vLLM runtime execution
 - streaming completions
 - production model loading and caching policy
 - request authentication and quotas
 
+## TensorRT-LLM Prerequisites For This Checkpoint
+
+Target model:
+
+- `nvidia/Llama-3.3-70B-Instruct-NVFP4`
+
+This checkpoint expects one of the following to exist before TensorRT-LLM can become ready:
+
+1. A local `trtllm-serve` process or container exposing an OpenAI-compatible API
+2. A future embedded runtime implementation with prebuilt engine artifacts and tokenizer files
+
+Configured defaults:
+
+- mode: `proxy`
+- upstream URL from inside `model-service`: `http://tensorrt-llm:8000`
+- expected engine path: `/models/tensorrt-llm/llama-3.3-70b-instruct-nvfp4`
+- expected tokenizer path: `/models/tensorrt-llm/llama-3.3-70b-instruct-nvfp4`
+- TensorRT-LLM runtime image: `nvcr.io/nvidia/tensorrt-llm/release:1.3.0rc3`
+- Hugging Face cache mount: `./data/cache/huggingface`
+
+What is actually verified in this repository now:
+
+- `model-service` can speak to the repo-managed TensorRT-LLM sidecar
+- readiness becomes degraded with a clear reason if the endpoint or artifacts are missing
+- end-to-end inference succeeded for `nvidia/Llama-3.3-70B-Instruct-NVFP4`
+
+What is not verified yet on this machine:
+
+- long-run operational stability under repeated requests
+- optimized TensorRT engine-mode serving instead of the current sidecar proxy mode
+- startup/warmup time tuning for developer ergonomics
+
+Verified TensorRT-LLM verification flow:
+
+```bash
+cd /home/admin/rfp-ai-foundation
+cp .env.example .env
+make up-trtllm
+curl http://localhost:18011/readyz
+curl http://localhost:18011/v1/models
+curl -sS http://localhost:18011/v1/chat/completions \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "model": "nvidia/Llama-3.3-70B-Instruct-NVFP4",
+    "messages": [{"role": "user", "content": "Reply with exactly: model-service healthy"}],
+    "max_tokens": 16,
+    "temperature": 0
+  }'
+```
+
 ## Notes on Future TensorRT-LLM Support
 
-The current `model-service` container is now a real service boundary with only the `mock` backend implemented. Later TensorRT-LLM adoption should be added behind the existing interface, likely by:
+The current `model-service` container is now a real service boundary with `mock` implemented and TensorRT-LLM proxy integration added. Later deeper TensorRT-LLM adoption should be added behind the existing interface, likely by:
 
 - introducing a backend adapter inside `services/model-service`
-- switching the base image to a CUDA and TensorRT-compatible runtime
+- deciding whether to stay with a sidecar `trtllm-serve` runtime or move to an embedded CUDA and TensorRT-compatible runtime
 - mounting model artifacts from a dedicated local model cache
 - preserving the external health and inference contract for upstream callers

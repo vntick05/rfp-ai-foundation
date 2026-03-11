@@ -85,3 +85,19 @@ Decision:
 - implement `mock` as the only actually working backend in this checkpoint
 - implement `tensorrt_llm` as a structured adapter placeholder that reports not-ready until runtime wiring is added
 - expose `GET /v1/models` and `POST /v1/chat/completions` as the minimal stable boundary
+
+## ADR-004: TensorRT-LLM integration uses proxy mode first
+
+Reason:
+
+- this machine does not currently have TensorRT-LLM runtime binaries or NVFP4 engine artifacts installed inside `model-service`
+- proxying to `trtllm-serve` keeps `model-service` focused on the service boundary instead of embedding heavy runtime management immediately
+- TensorRT-LLM already exposes OpenAI-compatible serving semantics, which fit the existing model-service API shape
+
+Decision:
+
+- target `nvidia/Llama-3.3-70B-Instruct-NVFP4`
+- support TensorRT-LLM through a local OpenAI-compatible `trtllm-serve` endpoint first
+- keep engine-path and tokenizer-path expectations explicit for future embedded or sidecar runtime work
+- report degraded readiness unless the upstream TensorRT-LLM server is reachable and advertises the expected model
+- keep `model-service` focused on API and backend selection while the heavy runtime lives in a dedicated sidecar

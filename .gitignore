@@ -12,3 +12,6 @@ data/postgres/*
 data/models/**
 !data/models/**/
 !data/models/**/.gitkeep
+data/cache/**
+!data/cache/**/
+!data/cache/**/.gitkeep

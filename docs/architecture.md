@@ -32,11 +32,12 @@ What is real now:
 
 - a working `mock` backend for service-level smoke tests
 - backend registry and adapter structure
-- explicit TensorRT-LLM adapter placeholder with honest not-ready behavior
+- explicit TensorRT-LLM integration path to a local `trtllm-serve` server with honest readiness behavior
+- verified end-to-end TensorRT-LLM response through `model-service`
 
 What is still scaffolded:
 
-- TensorRT-LLM runtime wiring
+- embedded TensorRT-LLM runtime wiring inside `model-service`
 - vLLM runtime wiring
 - model artifact loading beyond config surfaces
 - streaming responses
@@ -46,6 +47,12 @@ Planned future backend options:
 - TensorRT-LLM as the preferred NVIDIA path
 - vLLM where API compatibility or ecosystem tooling is more important
 - an OpenAI-compatible local facade when downstream tooling expects it
+
+Current TensorRT-LLM checkpoint target:
+
+- model identifier: `nvidia/Llama-3.3-70B-Instruct-NVFP4`
+- default integration mode: proxy to a repo-managed local `trtllm-serve` sidecar
+- expected artifact directory for prebuilt engines: `/models/tensorrt-llm/llama-3.3-70b-instruct-nvfp4`
 
 ### `orchestrator-api`
 

@@ -1,4 +1,40 @@
 services:
+  tensorrt-llm:
+    image: ${TENSORRT_LLM_IMAGE:-nvcr.io/nvidia/tensorrt-llm/release:1.3.0rc3}
+    container_name: rfp-foundation-tensorrt-llm
+    profiles: ["tensorrt-llm"]
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      HF_HOME: /root/.cache/huggingface
+      NVIDIA_VISIBLE_DEVICES: ${NVIDIA_VISIBLE_DEVICES:-all}
+      NVIDIA_DRIVER_CAPABILITIES: ${NVIDIA_DRIVER_CAPABILITIES:-compute,utility}
+    command:
+      - trtllm-serve
+      - serve
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - ${TENSORRT_LLM_MODEL_ID:-nvidia/Llama-3.3-70B-Instruct-NVFP4}
+    ipc: host
+    ports:
+      - "${TENSORRT_LLM_PORT:-8000}:8000"
+    volumes:
+      - ./data/cache/huggingface:/root/.cache/huggingface
+      - ./data/models/tensorrt-llm:/models/tensorrt-llm
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2)\"",
+        ]
+      interval: 20s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
   portainer:
     image: portainer/portainer-ce:lts
     container_name: rfp-foundation-portainer
@@ -78,6 +114,12 @@ services:
       MODEL_SERVICE_MODEL_ID: ${MODEL_SERVICE_MODEL_ID:-mock-gpt}
       MODEL_SERVICE_MODEL_PATH: ${MODEL_SERVICE_MODEL_PATH:-/models/mock-gpt}
       MODEL_SERVICE_RUNTIME_MODE: ${MODEL_SERVICE_RUNTIME_MODE:-development}
+      MODEL_SERVICE_TENSORRT_LLM_MODE: ${MODEL_SERVICE_TENSORRT_LLM_MODE:-proxy}
+      MODEL_SERVICE_TENSORRT_LLM_BASE_URL: ${MODEL_SERVICE_TENSORRT_LLM_BASE_URL:-http://tensorrt-llm:8000}
+      MODEL_SERVICE_TENSORRT_LLM_MODEL_ID: ${MODEL_SERVICE_TENSORRT_LLM_MODEL_ID:-nvidia/Llama-3.3-70B-Instruct-NVFP4}
+      MODEL_SERVICE_TENSORRT_LLM_ENGINE_PATH: ${MODEL_SERVICE_TENSORRT_LLM_ENGINE_PATH:-/models/tensorrt-llm/llama-3.3-70b-instruct-nvfp4}
+      MODEL_SERVICE_TENSORRT_LLM_TOKENIZER_PATH: ${MODEL_SERVICE_TENSORRT_LLM_TOKENIZER_PATH:-/models/tensorrt-llm/llama-3.3-70b-instruct-nvfp4}
+      MODEL_SERVICE_TENSORRT_LLM_REQUEST_TIMEOUT_SECONDS: ${MODEL_SERVICE_TENSORRT_LLM_REQUEST_TIMEOUT_SECONDS:-30}
       NVIDIA_VISIBLE_DEVICES: ${NVIDIA_VISIBLE_DEVICES:-all}
       NVIDIA_DRIVER_CAPABILITIES: ${NVIDIA_DRIVER_CAPABILITIES:-compute,utility}
     volumes:

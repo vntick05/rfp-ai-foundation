@@ -20,6 +20,13 @@ Not built yet:
 - custom UI
 - workflow implementations
 
+Current `model-service` reality:
+
+- `mock` backend is fully implemented for API smoke tests
+- TensorRT-LLM backend is implemented as a real integration path to a local `trtllm-serve` endpoint
+- end-to-end TensorRT-LLM inference through `model-service` has been verified for `nvidia/Llama-3.3-70B-Instruct-NVFP4`
+- embedded TensorRT-LLM runtime execution inside `model-service` is still not implemented; this checkpoint uses a sidecar `trtllm-serve` runtime
+
 ## Repo Layout
 
 ```text
@@ -56,6 +63,12 @@ make up
 make up-gpu
 ```
 
+4a. Start the verified TensorRT-LLM path:
+
+```bash
+make up-trtllm
+```
+
 5. Check health:
 
 ```bash
@@ -76,6 +89,14 @@ curl -sS http://localhost:18011/v1/chat/completions \
     "messages": [{"role": "user", "content": "Summarize the current checkpoint."}]
   }'
 ```
+
+TensorRT-LLM target for the next real inference path:
+
+- model: `nvidia/Llama-3.3-70B-Instruct-NVFP4`
+- expected runtime: local `trtllm-serve` OpenAI-compatible server
+- expected default upstream URL from inside `model-service`: `http://tensorrt-llm:8000`
+- repo-managed startup command: `make up-trtllm`
+- verified end-to-end through `model-service /v1/chat/completions`
 
 6. Stop services:
 

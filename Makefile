@@ -3,13 +3,16 @@ SHELL := /bin/bash
 COMPOSE_FILES := -f docker-compose.yml
 GPU_COMPOSE_FILES := -f docker-compose.yml -f docker-compose.gpu.yml
 
-.PHONY: up up-gpu down logs ps config config-gpu check portainer-url
+.PHONY: up up-gpu up-trtllm down logs ps config config-gpu check portainer-url
 
 up:
 	docker compose $(COMPOSE_FILES) up -d --build
 
 up-gpu:
 	docker compose $(GPU_COMPOSE_FILES) up -d --build
+
+up-trtllm:
+	MODEL_SERVICE_BACKEND=tensorrt_llm docker compose $(GPU_COMPOSE_FILES) --profile tensorrt-llm up -d --build
 
 down:
 	docker compose $(GPU_COMPOSE_FILES) down

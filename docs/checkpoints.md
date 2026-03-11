@@ -144,3 +144,35 @@ Recommended commit message:
 ```text
 feat: implement model-service API boundary with swappable backend adapters
 ```
+
+## Checkpoint 5: TensorRT-LLM Integration Path
+
+Definition:
+
+- `model-service` supports `tensorrt_llm` as a real config-driven backend option
+- TensorRT-LLM readiness reflects upstream server or artifact availability honestly
+- target model is explicitly `nvidia/Llama-3.3-70B-Instruct-NVFP4`
+- `model-service` can proxy `GET /v1/models` and `POST /v1/chat/completions` to a local `trtllm-serve` endpoint when available
+- repo-managed TensorRT-LLM sidecar added with persistent Hugging Face cache
+- end-to-end inference verified through `model-service`
+
+Verify locally:
+
+1. `make up-trtllm`
+2. `curl http://localhost:18011/readyz`
+3. `curl http://localhost:18011/v1/models`
+4. Send `POST /v1/chat/completions` for `nvidia/Llama-3.3-70B-Instruct-NVFP4`
+5. Confirm the response returns from the TensorRT-LLM backend
+
+Known gaps in this checkpoint:
+
+- no embedded TensorRT-LLM runtime in the `model-service` container
+- current path is sidecar proxy mode rather than embedded engine mode
+- first startup is heavy because model download and warmup happen inside the sidecar
+- developer-friendly warm cache/bootstrap automation is still minimal
+
+Recommended commit message:
+
+```text
+feat: add working tensorrt-llm sidecar integration for model-service
+```

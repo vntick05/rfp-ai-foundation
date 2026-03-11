@@ -1,6 +1,6 @@
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import yaml
 from pydantic import BaseModel, Field
@@ -17,6 +17,12 @@ class Settings(BaseSettings):
     model_service_model_id: str | None = None
     model_service_model_path: str | None = None
     model_service_runtime_mode: str | None = None
+    model_service_tensorrt_llm_mode: str | None = None
+    model_service_tensorrt_llm_base_url: str | None = None
+    model_service_tensorrt_llm_model_id: str | None = None
+    model_service_tensorrt_llm_engine_path: str | None = None
+    model_service_tensorrt_llm_tokenizer_path: str | None = None
+    model_service_tensorrt_llm_request_timeout_seconds: float | None = None
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
@@ -36,9 +42,13 @@ class ModelSection(BaseModel):
 
 class TensorRTLLMSection(BaseModel):
     enabled: bool = False
+    mode: Literal["proxy", "engine"] = "proxy"
+    model_id: str = "nvidia/Llama-3.3-70B-Instruct-NVFP4"
+    serve_base_url: str | None = None
     engine_path: str | None = None
     tokenizer_path: str | None = None
     max_batch_size: int | None = Field(default=None, ge=1)
+    request_timeout_seconds: float = Field(default=30.0, gt=0)
     notes: str = ""
 
 
@@ -85,10 +95,41 @@ def get_app_config() -> AppConfig:
         update={"default_backend": settings.model_service_backend}
     )
 
-    if config.backends.tensorrt_llm.engine_path is None and model_path:
-        config.backends.tensorrt_llm = config.backends.tensorrt_llm.model_copy(
-            update={"engine_path": model_path}
-        )
+    tensorrt_model_id = (
+        settings.model_service_tensorrt_llm_model_id
+        or config.backends.tensorrt_llm.model_id
+    )
+    tensorrt_engine_path = (
+        settings.model_service_tensorrt_llm_engine_path
+        or config.backends.tensorrt_llm.engine_path
+    )
+    tensorrt_tokenizer_path = (
+        settings.model_service_tensorrt_llm_tokenizer_path
+        or config.backends.tensorrt_llm.tokenizer_path
+    )
+    tensorrt_mode = (
+        settings.model_service_tensorrt_llm_mode
+        or config.backends.tensorrt_llm.mode
+    )
+    tensorrt_base_url = (
+        settings.model_service_tensorrt_llm_base_url
+        or config.backends.tensorrt_llm.serve_base_url
+    )
+    tensorrt_timeout = (
+        settings.model_service_tensorrt_llm_request_timeout_seconds
+        or config.backends.tensorrt_llm.request_timeout_seconds
+    )
+
+    config.backends.tensorrt_llm = config.backends.tensorrt_llm.model_copy(
+        update={
+            "mode": tensorrt_mode,
+            "model_id": tensorrt_model_id,
+            "serve_base_url": tensorrt_base_url,
+            "engine_path": tensorrt_engine_path,
+            "tokenizer_path": tensorrt_tokenizer_path,
+            "request_timeout_seconds": tensorrt_timeout,
+        }
+    )
 
     return config
 
@@ -97,6 +138,12 @@ def model_path_exists(config: AppConfig) -> bool:
     if not config.model.path:
         return False
     return Path(config.model.path).exists()
+
+
+def path_exists(path: str | None) -> bool:
+    if not path:
+        return False
+    return Path(path).exists()
 
 
 @lru_cache

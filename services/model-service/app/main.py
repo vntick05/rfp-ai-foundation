@@ -32,6 +32,24 @@ def readyz() -> JSONResponse:
     backend = app.state.backend
     readiness = backend.readiness()
     descriptor = backend.descriptor()
+    models = backend.list_models()
+    primary_model = models[0] if models else None
+    selected_model_path = config.model.path
+    selected_runtime_mode = config.model.runtime_mode
+    path_exists = model_path_exists(config)
+
+    if primary_model is not None:
+        selected_model_path = (
+            primary_model.metadata.get("engine_path")
+            or primary_model.metadata.get("model_path")
+            or selected_model_path
+        )
+        selected_runtime_mode = primary_model.runtime_mode
+        if selected_model_path:
+            from app.config import path_exists as configured_path_exists
+
+            path_exists = configured_path_exists(selected_model_path)
+
     status_code = 200 if readiness.ready else 503
     return JSONResponse(
         status_code=status_code,
@@ -40,10 +58,10 @@ def readyz() -> JSONResponse:
             "service": config.service.name,
             "backend": descriptor.__dict__,
             "model": {
-                "id": config.model.id,
-                "path": config.model.path,
-                "path_exists": model_path_exists(config),
-                "runtime_mode": config.model.runtime_mode,
+                "id": primary_model.id if primary_model else None,
+                "path": selected_model_path,
+                "path_exists": path_exists,
+                "runtime_mode": selected_runtime_mode,
             },
             "environment": settings.app_env,
             "detail": readiness.detail,
@@ -76,8 +94,10 @@ def chat_completions(request: ChatCompletionRequest) -> dict[str, object]:
         raise HTTPException(status_code=503, detail=readiness.detail)
 
     config = get_app_config()
-    model_id = request.model or config.model.id
-    if model_id != config.model.id:
+    available_models = {model.id for model in backend.list_models()}
+    default_model_id = next(iter(available_models), config.model.id)
+    model_id = request.model or default_model_id
+    if model_id not in available_models:
         raise HTTPException(status_code=404, detail=f"Model '{model_id}' is not available")
 
     response = backend.chat(
