@@ -9,3 +9,6 @@ __pycache__/
 .DS_Store
 data/postgres/*
 !data/postgres/.gitkeep
+data/models/**
+!data/models/**/
+!data/models/**/.gitkeep

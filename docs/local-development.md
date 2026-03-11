@@ -27,6 +27,7 @@ Review:
 - Postgres credentials
 - compose project name
 - Portainer UI port
+- model-service backend, model id, and model path
 
 ## Running the Stack
 
@@ -60,11 +61,24 @@ Desktop launcher:
 curl http://localhost:18010/healthz
 curl http://localhost:18010/readyz
 curl http://localhost:18011/healthz
+curl http://localhost:18011/readyz
+curl http://localhost:18011/v1/models
 docker compose ps
 make portainer-url
 ```
 
 Then open `https://localhost:19443`.
+
+Minimal model-service chat smoke test:
+
+```bash
+curl -sS http://localhost:18011/v1/chat/completions \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "model": "mock-gpt",
+    "messages": [{"role": "user", "content": "Return a short readiness summary."}]
+  }'
+```
 
 ## First-Time Portainer Setup
 
@@ -91,9 +105,26 @@ make down
 Postgres persistence is stored in the Docker volume `rfp-ai-foundation_postgres-data`.
 Portainer persistence is stored in the Docker volume `rfp-ai-foundation_portainer-data`.
 
+## Model-Service Notes
+
+Implemented now:
+
+- `mock` backend with deterministic responses for API smoke tests
+- backend registry and readiness reporting
+- `GET /v1/models`
+- `POST /v1/chat/completions`
+
+Not implemented yet:
+
+- TensorRT-LLM runtime execution
+- vLLM runtime execution
+- streaming completions
+- production model loading and caching policy
+- request authentication and quotas
+
 ## Notes on Future TensorRT-LLM Support
 
-The current `model-service` container is only a boundary scaffold. Later TensorRT-LLM adoption should be added behind the existing service interface, likely by:
+The current `model-service` container is now a real service boundary with only the `mock` backend implemented. Later TensorRT-LLM adoption should be added behind the existing interface, likely by:
 
 - introducing a backend adapter inside `services/model-service`
 - switching the base image to a CUDA and TensorRT-compatible runtime

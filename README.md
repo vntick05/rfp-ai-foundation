@@ -6,7 +6,7 @@ This repository intentionally stops at the architectural foundation:
 
 - Docker-based local stack
 - Portainer CE for local container inspection and management
-- GPU-ready model service boundary
+- GPU-ready model service boundary with a real mock inference API
 - Minimal FastAPI orchestrator API
 - Postgres foundation with persistent storage
 - Documentation and checkpoint discipline
@@ -62,7 +62,19 @@ make up-gpu
 make ps
 curl http://localhost:18010/healthz
 curl http://localhost:18011/healthz
+curl http://localhost:18011/v1/models
 make portainer-url
+```
+
+Minimal model-service smoke test:
+
+```bash
+curl -sS http://localhost:18011/v1/chat/completions \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "model": "mock-gpt",
+    "messages": [{"role": "user", "content": "Summarize the current checkpoint."}]
+  }'
 ```
 
 6. Stop services:

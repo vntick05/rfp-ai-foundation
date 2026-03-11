@@ -71,3 +71,17 @@ What it is not:
 - not the application UI
 - not an observability platform
 - not a substitute for future production-grade operational controls
+
+## ADR-003: Minimal real model-service before TensorRT-LLM integration
+
+Reason:
+
+- the service boundary should be exercised with a real request/response path before backend-specific GPU integration is attempted
+- a working mock backend provides honest API smoke tests without pretending that TensorRT-LLM is already operational
+- keeping the API shape close to OpenAI-style chat completions preserves flexibility for future Haystack or UI integrations
+
+Decision:
+
+- implement `mock` as the only actually working backend in this checkpoint
+- implement `tensorrt_llm` as a structured adapter placeholder that reports not-ready until runtime wiring is added
+- expose `GET /v1/models` and `POST /v1/chat/completions` as the minimal stable boundary

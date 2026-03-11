@@ -109,3 +109,38 @@ Recommended commit message:
 ```text
 chore: add portainer save point and desktop launcher
 ```
+
+## Checkpoint 4: Model-Service API Boundary
+
+Definition:
+
+- `model-service` exposes a real backend-driven `GET /v1/models`
+- `model-service` exposes a minimal `POST /v1/chat/completions`
+- `mock` backend is implemented for deterministic smoke tests
+- TensorRT-LLM adapter structure exists but remains explicitly not ready
+- config expresses backend, model id, model path, and runtime mode
+
+Verify locally:
+
+1. `make up`
+2. `curl http://localhost:18011/healthz`
+3. `curl http://localhost:18011/readyz`
+4. `curl http://localhost:18011/v1/models`
+5. Send a `POST /v1/chat/completions` request using `mock-gpt`
+6. Optional GPU shape check: `make up-gpu`
+
+Intentionally still not built:
+
+- actual TensorRT-LLM execution
+- vLLM execution
+- streaming inference
+- model download/bootstrap automation
+- orchestration workflows
+- agents
+- parsing
+
+Recommended commit message:
+
+```text
+feat: implement model-service API boundary with swappable backend adapters
+```

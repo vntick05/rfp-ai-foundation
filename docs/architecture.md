@@ -21,6 +21,26 @@ Purpose:
 - allow backend swaps without forcing upstream service rewrites
 - keep NVIDIA-specific serving concerns isolated from orchestration logic
 
+Current implementation in this checkpoint:
+
+- `GET /healthz` for container liveness
+- `GET /readyz` for backend readiness and model/runtime reporting
+- `GET /v1/models` from active backend state
+- `POST /v1/chat/completions` as the minimal inference boundary
+
+What is real now:
+
+- a working `mock` backend for service-level smoke tests
+- backend registry and adapter structure
+- explicit TensorRT-LLM adapter placeholder with honest not-ready behavior
+
+What is still scaffolded:
+
+- TensorRT-LLM runtime wiring
+- vLLM runtime wiring
+- model artifact loading beyond config surfaces
+- streaming responses
+
 Planned future backend options:
 
 - TensorRT-LLM as the preferred NVIDIA path

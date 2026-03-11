@@ -75,10 +75,14 @@ services:
       MODEL_SERVICE_HOST: ${MODEL_SERVICE_HOST:-0.0.0.0}
       MODEL_SERVICE_PORT: ${MODEL_SERVICE_PORT_INTERNAL:-8011}
       MODEL_SERVICE_CONFIG_PATH: ${MODEL_SERVICE_CONFIG_PATH:-/app/configs/model-service.yaml}
+      MODEL_SERVICE_MODEL_ID: ${MODEL_SERVICE_MODEL_ID:-mock-gpt}
+      MODEL_SERVICE_MODEL_PATH: ${MODEL_SERVICE_MODEL_PATH:-/models/mock-gpt}
+      MODEL_SERVICE_RUNTIME_MODE: ${MODEL_SERVICE_RUNTIME_MODE:-development}
       NVIDIA_VISIBLE_DEVICES: ${NVIDIA_VISIBLE_DEVICES:-all}
       NVIDIA_DRIVER_CAPABILITIES: ${NVIDIA_DRIVER_CAPABILITIES:-compute,utility}
     volumes:
       - ./configs/model-service:/app/configs:ro
+      - ./data/models:/models
     ports:
       - "${MODEL_SERVICE_PORT:-18011}:8011"
     healthcheck:

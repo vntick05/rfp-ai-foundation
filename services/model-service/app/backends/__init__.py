@@ -1,3 +1,3 @@
-from .base import BackendDescriptor
+from .base import BackendDescriptor, ModelBackend, ModelCard
 
-__all__ = ["BackendDescriptor"]
+__all__ = ["BackendDescriptor", "ModelBackend", "ModelCard"]

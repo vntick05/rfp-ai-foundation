@@ -3,12 +3,21 @@ service:
   default_backend: mock
   api_compatibility: openai-like
 
+model:
+  id: mock-gpt
+  path: /models/mock-gpt
+  runtime_mode: development
+  ready_on_startup: true
+
 backends:
   mock:
     enabled: true
-    notes: Minimal placeholder backend for foundation-stage health checks.
+    notes: Deterministic local backend for service smoke tests and API verification.
   tensorrt_llm:
     enabled: false
+    engine_path: null
+    tokenizer_path: null
+    max_batch_size: null
     notes: Preferred future NVIDIA-optimized backend on DGX Spark.
   vllm:
     enabled: false
