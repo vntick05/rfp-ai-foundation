@@ -3,6 +3,12 @@ service:
   default_backend: mock
   api_compatibility: openai-like
 
+runtime:
+  request_timeout_seconds: 60
+  max_concurrent_requests: 8
+  overload_status_code: 503
+  request_id_header: X-Request-ID
+
 model:
   id: mock-gpt
   path: /models/mock-gpt

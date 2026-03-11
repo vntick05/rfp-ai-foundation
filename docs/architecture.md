@@ -27,6 +27,8 @@ Current implementation in this checkpoint:
 - `GET /readyz` for backend readiness and model/runtime reporting
 - `GET /v1/models` from active backend state
 - `POST /v1/chat/completions` as the minimal inference boundary
+- structured request logging and request ID propagation for internal callers
+- bounded in-flight request handling and timeout-aware error responses
 
 What is real now:
 
@@ -34,6 +36,7 @@ What is real now:
 - backend registry and adapter structure
 - explicit TensorRT-LLM integration path to a local `trtllm-serve` server with honest readiness behavior
 - verified end-to-end TensorRT-LLM response through `model-service`
+- Docker-internal access pattern via `http://model-service:8011`
 
 What is still scaffolded:
 
@@ -47,6 +50,13 @@ Planned future backend options:
 - TensorRT-LLM as the preferred NVIDIA path
 - vLLM where API compatibility or ecosystem tooling is more important
 - an OpenAI-compatible local facade when downstream tooling expects it
+
+Internal caller contract:
+
+- callers inside Docker should use service naming, not published host ports
+- `GET /healthz` is only a process liveness signal
+- `GET /readyz` is the backend usability signal
+- callers should send `X-Request-ID` if they want trace continuity in logs and future upstream services
 
 Current TensorRT-LLM checkpoint target:
 

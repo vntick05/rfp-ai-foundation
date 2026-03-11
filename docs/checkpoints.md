@@ -176,3 +176,37 @@ Recommended commit message:
 ```text
 feat: add working tensorrt-llm sidecar integration for model-service
 ```
+
+## Checkpoint 6: Model-Service Internal Reliability Hardening
+
+Definition:
+
+- `model-service` keeps the same external endpoint surface
+- Docker-internal callers can reliably reach `model-service` at `http://model-service:8011`
+- `GET /healthz` remains process liveness only
+- `GET /readyz` remains honest backend readiness only
+- request ID propagation and structured request logs are implemented
+- request timeout and bounded in-flight request settings are configurable
+
+Verify locally:
+
+1. `make up`
+2. `curl http://localhost:18011/healthz`
+3. `curl http://localhost:18011/readyz`
+4. `curl -H 'X-Request-ID: checkpoint-6-host' http://localhost:18011/v1/models`
+5. `docker compose exec orchestrator-api wget -q -O - http://model-service:8011/readyz`
+6. `docker compose logs model-service --tail=50`
+
+Known gaps in this checkpoint:
+
+- no streaming support yet
+- no auth or API keys
+- no per-caller rate limiting
+- no retry policy implemented in upstream callers yet
+- no request queue beyond bounded in-flight rejection
+
+Recommended commit message:
+
+```text
+feat: harden model-service for internal service-to-service use
+```

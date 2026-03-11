@@ -14,6 +14,10 @@ class Settings(BaseSettings):
     model_service_host: str = "0.0.0.0"
     model_service_port: int = 8011
     model_service_config_path: str = "/app/configs/model-service.yaml"
+    model_service_request_timeout_seconds: float | None = None
+    model_service_max_concurrent_requests: int | None = None
+    model_service_overload_status_code: int | None = None
+    model_service_request_id_header: str | None = None
     model_service_model_id: str | None = None
     model_service_model_path: str | None = None
     model_service_runtime_mode: str | None = None
@@ -38,6 +42,13 @@ class ModelSection(BaseModel):
     path: str | None = None
     runtime_mode: str = "development"
     ready_on_startup: bool = True
+
+
+class RuntimeSection(BaseModel):
+    request_timeout_seconds: float = Field(default=60.0, gt=0)
+    max_concurrent_requests: int = Field(default=8, ge=1)
+    overload_status_code: int = Field(default=503, ge=429, le=503)
+    request_id_header: str = "X-Request-ID"
 
 
 class TensorRTLLMSection(BaseModel):
@@ -65,6 +76,7 @@ class BackendsSection(BaseModel):
 
 class AppConfig(BaseModel):
     service: ServiceSection = Field(default_factory=ServiceSection)
+    runtime: RuntimeSection = Field(default_factory=RuntimeSection)
     model: ModelSection = Field(default_factory=ModelSection)
     backends: BackendsSection = Field(default_factory=BackendsSection)
 
@@ -93,6 +105,26 @@ def get_app_config() -> AppConfig:
     )
     config.service = config.service.model_copy(
         update={"default_backend": settings.model_service_backend}
+    )
+    config.runtime = config.runtime.model_copy(
+        update={
+            "request_timeout_seconds": (
+                settings.model_service_request_timeout_seconds
+                or config.runtime.request_timeout_seconds
+            ),
+            "max_concurrent_requests": (
+                settings.model_service_max_concurrent_requests
+                or config.runtime.max_concurrent_requests
+            ),
+            "overload_status_code": (
+                settings.model_service_overload_status_code
+                or config.runtime.overload_status_code
+            ),
+            "request_id_header": (
+                settings.model_service_request_id_header
+                or config.runtime.request_id_header
+            ),
+        }
     )
 
     tensorrt_model_id = (

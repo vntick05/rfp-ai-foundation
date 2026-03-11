@@ -27,7 +27,7 @@ Review:
 - Postgres credentials
 - compose project name
 - Portainer UI port
-- model-service backend, model id, and model path
+- model-service backend, model id, model path, and runtime request settings
 
 ## Running the Stack
 
@@ -79,6 +79,13 @@ docker compose ps
 make portainer-url
 ```
 
+Internal container-to-container validation:
+
+```bash
+docker compose exec orchestrator-api wget -q -O - http://model-service:8011/readyz
+docker compose exec orchestrator-api wget -q -O - http://model-service:8011/v1/models
+```
+
 Then open `https://localhost:19443`.
 
 Minimal model-service chat smoke test:
@@ -125,6 +132,9 @@ Implemented now:
 - backend registry and readiness reporting
 - `GET /v1/models`
 - `POST /v1/chat/completions`
+- structured JSON request logs
+- request ID propagation with `X-Request-ID`
+- request timeout responses and bounded in-flight request handling
 - TensorRT-LLM proxy integration path for `nvidia/Llama-3.3-70B-Instruct-NVFP4`
 
 Not implemented yet:
@@ -134,6 +144,32 @@ Not implemented yet:
 - streaming completions
 - production model loading and caching policy
 - request authentication and quotas
+
+## Internal Service Calling Pattern
+
+For other containers in the same compose project:
+
+- use `http://model-service:8011`
+- do not use `localhost:18011`
+- treat host port `18011` as a host-machine convenience only
+
+Recommended request headers for internal callers:
+
+- `Content-Type: application/json`
+- `X-Request-ID: <caller-generated-id>` when a caller wants stable trace correlation across services
+
+Readiness semantics:
+
+- `GET /healthz` means the FastAPI process is alive
+- `GET /readyz` means the selected backend is actually usable right now
+- if the selected backend is unavailable, `GET /readyz` returns `503`
+
+Current reliability controls:
+
+- request timeout is configurable with `MODEL_SERVICE_REQUEST_TIMEOUT_SECONDS`
+- max in-flight requests is configurable with `MODEL_SERVICE_MAX_CONCURRENT_REQUESTS`
+- overload responses use `MODEL_SERVICE_OVERLOAD_STATUS_CODE`
+- successful and failed requests log timestamp, request ID, endpoint, backend, model ID, duration, and status
 
 ## TensorRT-LLM Prerequisites For This Checkpoint
 

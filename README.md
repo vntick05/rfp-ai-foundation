@@ -25,6 +25,7 @@ Current `model-service` reality:
 - `mock` backend is fully implemented for API smoke tests
 - TensorRT-LLM backend is implemented as a real integration path to a local `trtllm-serve` endpoint
 - end-to-end TensorRT-LLM inference through `model-service` has been verified for `nvidia/Llama-3.3-70B-Instruct-NVFP4`
+- request IDs, structured logs, timeout handling, and bounded in-flight request handling are implemented for internal service use
 - embedded TensorRT-LLM runtime execution inside `model-service` is still not implemented; this checkpoint uses a sidecar `trtllm-serve` runtime
 
 ## Repo Layout
@@ -89,6 +90,12 @@ curl -sS http://localhost:18011/v1/chat/completions \
     "messages": [{"role": "user", "content": "Summarize the current checkpoint."}]
   }'
 ```
+
+Internal container-to-container URL:
+
+- `http://model-service:8011`
+
+Use host ports like `http://localhost:18011` only from the host machine. Other containers in the stack should call `model-service` by Docker service name.
 
 TensorRT-LLM target for the next real inference path:
 
