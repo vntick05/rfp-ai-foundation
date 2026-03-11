@@ -8,22 +8,27 @@ services:
       - .env
     environment:
       HF_HOME: /root/.cache/huggingface
+      HF_TOKEN: ${HF_TOKEN:-}
       NVIDIA_VISIBLE_DEVICES: ${NVIDIA_VISIBLE_DEVICES:-all}
       NVIDIA_DRIVER_CAPABILITIES: ${NVIDIA_DRIVER_CAPABILITIES:-compute,utility}
     command:
-      - trtllm-serve
-      - serve
-      - --host
-      - 0.0.0.0
-      - --port
-      - "8000"
-      - ${TENSORRT_LLM_MODEL_ID:-nvidia/Llama-3.3-70B-Instruct-NVFP4}
+      - /bin/bash
+      - -lc
+      - >
+        hf download "${TENSORRT_LLM_MODEL_HANDLE:-nvidia/Llama-3.3-70B-Instruct-NVFP4}" --local-dir "${TENSORRT_LLM_MODEL_CACHE_DIR:-/models/tensorrt-llm/llama-3.3-70b-instruct-nvfp4}"
+        &&
+        trtllm-serve "${TENSORRT_LLM_MODEL_HANDLE:-nvidia/Llama-3.3-70B-Instruct-NVFP4}"
+        --host 0.0.0.0
+        --port 8000
+        --trust_remote_code
+        --extra_llm_api_options "${TENSORRT_LLM_EXTRA_LLM_API_OPTIONS:-/app/configs/extra-llm-api-options.yml}"
     ipc: host
     ports:
       - "${TENSORRT_LLM_PORT:-8000}:8000"
     volumes:
       - ./data/cache/huggingface:/root/.cache/huggingface
       - ./data/models/tensorrt-llm:/models/tensorrt-llm
+      - ./configs/tensorrt-llm:/app/configs:ro
     healthcheck:
       test:
         [

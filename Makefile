@@ -12,7 +12,7 @@ up-gpu:
 	docker compose $(GPU_COMPOSE_FILES) up -d --build
 
 up-trtllm:
-	MODEL_SERVICE_BACKEND=tensorrt_llm docker compose $(GPU_COMPOSE_FILES) --profile tensorrt-llm up -d --build
+	MODEL_SERVICE_BACKEND=tensorrt_llm MODEL_SERVICE_TENSORRT_LLM_MODE=proxy docker compose $(GPU_COMPOSE_FILES) --profile tensorrt-llm up -d --build
 
 down:
 	docker compose $(GPU_COMPOSE_FILES) down

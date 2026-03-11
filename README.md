@@ -24,6 +24,7 @@ Current `model-service` reality:
 
 - `mock` backend is fully implemented for API smoke tests
 - TensorRT-LLM backend is implemented as a real integration path to a local `trtllm-serve` endpoint
+- the preferred DGX Spark runtime path follows NVIDIA guidance: warm the Hugging Face cache, then run `trtllm-serve "$MODEL_HANDLE"` in a dedicated sidecar
 - end-to-end TensorRT-LLM inference through `model-service` has been verified for `nvidia/Llama-3.3-70B-Instruct-NVFP4`
 - streaming `POST /v1/chat/completions` is supported for the current mock and TensorRT-LLM proxy paths
 - engine-mode lifecycle support now exists inside `model-service`, but it still requires prebuilt engine artifacts and a TensorRT-capable model-service image
@@ -102,7 +103,7 @@ Use host ports like `http://localhost:18011` only from the host machine. Other c
 TensorRT-LLM target for the next real inference path:
 
 - model: `nvidia/Llama-3.3-70B-Instruct-NVFP4`
-- expected runtime: local `trtllm-serve` OpenAI-compatible server
+- expected runtime: local `trtllm-serve` OpenAI-compatible server started from a model handle, not an app-embedded engine build
 - expected default upstream URL from inside `model-service`: `http://tensorrt-llm:8000`
 - repo-managed startup command: `make up-trtllm`
 - verified end-to-end through `model-service /v1/chat/completions`

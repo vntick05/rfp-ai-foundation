@@ -68,6 +68,7 @@ Current TensorRT-LLM checkpoint target:
 
 - model identifier: `nvidia/Llama-3.3-70B-Instruct-NVFP4`
 - default integration mode: proxy to a repo-managed local `trtllm-serve` sidecar
+- recommended DGX Spark runtime path: run `hf download "$MODEL_HANDLE"` and then `trtllm-serve "$MODEL_HANDLE"` in the sidecar, with `model-service` kept as the stable internal API boundary
 - expected artifact directory for prebuilt engines: `/models/tensorrt-llm/llama-3.3-70b-instruct-nvfp4`
 - engine-mode runtime image expectation: a TensorRT-capable `model-service` image such as `nvcr.io/nvidia/tensorrt-llm/release:1.3.0rc3`
 

@@ -269,3 +269,32 @@ Recommended commit message:
 ```text
 feat: add engine-mode runtime wiring to model-service
 ```
+
+## Checkpoint 9: NVIDIA-Aligned TensorRT-LLM Runtime
+
+Definition:
+
+- the repo-managed `tensorrt-llm` sidecar follows the NVIDIA DGX Spark pattern
+- the sidecar warms the local Hugging Face cache with `hf download "$MODEL_HANDLE"`
+- the sidecar serves the model with `trtllm-serve "$MODEL_HANDLE"`
+- `model-service` stays in `proxy` mode and remains the stable internal API boundary
+
+Verify locally:
+
+1. `make up-trtllm`
+2. `docker compose logs -f tensorrt-llm`
+3. `curl http://localhost:18011/readyz`
+4. `curl http://localhost:18011/v1/models`
+5. Send `POST /v1/chat/completions` for `nvidia/Llama-3.3-70B-Instruct-NVFP4`
+
+Known gaps in this checkpoint:
+
+- first startup is still heavy because the sidecar may need to download and warm the model
+- embedded engine mode for the 70B target remains separate work
+- long-run TensorRT tuning is still deferred
+
+Recommended commit message:
+
+```text
+chore: align tensorrt-llm sidecar with nvidia spark guidance
+```

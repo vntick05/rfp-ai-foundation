@@ -53,7 +53,9 @@ This command:
 
 - starts the TensorRT-LLM sidecar
 - forces `model-service` onto the `tensorrt_llm` backend
+- keeps `model-service` in `proxy` mode
 - keeps the rest of the stack unchanged
+- follows the NVIDIA DGX Spark pattern: `hf download "$MODEL_HANDLE"` and then `trtllm-serve "$MODEL_HANDLE"`
 
 Portainer runs as part of the normal stack. It is a local operator tool for:
 
@@ -186,6 +188,9 @@ Configured defaults:
 
 - mode: `proxy`
 - upstream URL from inside `model-service`: `http://tensorrt-llm:8000`
+- model handle for the sidecar: `nvidia/Llama-3.3-70B-Instruct-NVFP4`
+- sidecar cache directory: `/models/tensorrt-llm/llama-3.3-70b-instruct-nvfp4`
+- extra TRT-LLM API options file: `/app/configs/extra-llm-api-options.yml`
 - expected engine path: `/models/tensorrt-llm/llama-3.3-70b-instruct-nvfp4`
 - expected tokenizer path: `/models/tensorrt-llm/llama-3.3-70b-instruct-nvfp4`
 - TensorRT-LLM runtime image: `nvcr.io/nvidia/tensorrt-llm/release:1.3.0rc3`
@@ -194,6 +199,7 @@ Configured defaults:
 What is actually verified in this repository now:
 
 - `model-service` can speak to the repo-managed TensorRT-LLM sidecar
+- the sidecar can follow the NVIDIA-recommended Spark flow of downloading the model handle and serving it with `trtllm-serve`
 - readiness becomes degraded with a clear reason if the endpoint or artifacts are missing
 - end-to-end inference succeeded for `nvidia/Llama-3.3-70B-Instruct-NVFP4`
 - engine mode reports exact artifact/runtime blockers instead of pretending to be usable
