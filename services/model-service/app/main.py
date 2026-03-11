@@ -28,6 +28,7 @@ async def lifespan(app: FastAPI):
     config = get_app_config()
     configure_logging(settings.log_level)
     app.state.backend = create_backend(config)
+    app.state.backend.startup()
     app.state.request_timeout_seconds = config.runtime.request_timeout_seconds
     app.state.max_concurrent_requests = config.runtime.max_concurrent_requests
     app.state.overload_status_code = config.runtime.overload_status_code
@@ -35,6 +36,7 @@ async def lifespan(app: FastAPI):
     app.state.inflight_requests = 0
     app.state.inflight_lock = asyncio.Lock()
     yield
+    app.state.backend.shutdown()
 
 
 app = FastAPI(title="model-service", version="0.3.0", lifespan=lifespan)

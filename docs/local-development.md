@@ -137,10 +137,10 @@ Implemented now:
 - request ID propagation with `X-Request-ID`
 - request timeout responses and bounded in-flight request handling
 - TensorRT-LLM proxy integration path for `nvidia/Llama-3.3-70B-Instruct-NVFP4`
+- TensorRT-LLM engine-mode lifecycle wiring inside `model-service`
 
 Not implemented yet:
 
-- embedded TensorRT-LLM runtime execution inside `model-service`
 - vLLM runtime execution
 - production model loading and caching policy
 - request authentication and quotas
@@ -196,12 +196,42 @@ What is actually verified in this repository now:
 - `model-service` can speak to the repo-managed TensorRT-LLM sidecar
 - readiness becomes degraded with a clear reason if the endpoint or artifacts are missing
 - end-to-end inference succeeded for `nvidia/Llama-3.3-70B-Instruct-NVFP4`
+- engine mode reports exact artifact/runtime blockers instead of pretending to be usable
 
 What is not verified yet on this machine:
 
 - long-run operational stability under repeated requests
-- optimized TensorRT engine-mode serving instead of the current sidecar proxy mode
+- optimized TensorRT engine-mode serving inside `model-service`
 - startup/warmup time tuning for developer ergonomics
+
+## TensorRT-LLM Engine Mode
+
+Engine mode now expects:
+
+- prebuilt TensorRT engine artifacts at `/models/tensorrt-llm/llama-3.3-70b-instruct-nvfp4`
+- tokenizer assets at `/models/tensorrt-llm/llama-3.3-70b-instruct-nvfp4`
+- a `model-service` image that includes `trtllm-serve`
+
+Relevant config:
+
+- `MODEL_SERVICE_TENSORRT_LLM_MODE=engine`
+- `MODEL_SERVICE_TENSORRT_LLM_ENGINE_PATH=/models/tensorrt-llm/llama-3.3-70b-instruct-nvfp4`
+- `MODEL_SERVICE_TENSORRT_LLM_TOKENIZER_PATH=/models/tensorrt-llm/llama-3.3-70b-instruct-nvfp4`
+- `MODEL_SERVICE_TENSORRT_LLM_EMBEDDED_HOST=127.0.0.1`
+- `MODEL_SERVICE_TENSORRT_LLM_EMBEDDED_PORT=8020`
+- `MODEL_SERVICE_TENSORRT_LLM_EMBEDDED_BACKEND=tensorrt`
+- `MODEL_SERVICE_TENSORRT_LLM_EXECUTABLE=trtllm-serve`
+- `MODEL_SERVICE_BASE_IMAGE=nvcr.io/nvidia/tensorrt-llm/release:1.3.0rc3` when building a TensorRT-capable `model-service` image
+
+What is in scope in this checkpoint:
+
+- `model-service` can manage a local embedded `trtllm-serve` process for engine mode
+- readiness and failure messages are explicit about missing artifacts or runtime binaries
+
+What is not in scope in this checkpoint:
+
+- building the TensorRT engine itself
+- guaranteeing a working engine-mode smoke test without those artifacts
 
 Verified TensorRT-LLM verification flow:
 

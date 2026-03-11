@@ -27,6 +27,16 @@ class Settings(BaseSettings):
     model_service_tensorrt_llm_engine_path: str | None = None
     model_service_tensorrt_llm_tokenizer_path: str | None = None
     model_service_tensorrt_llm_request_timeout_seconds: float | None = None
+    model_service_tensorrt_llm_checkpoint_path: str | None = None
+    model_service_tensorrt_llm_hf_cache_dir: str | None = None
+    model_service_tensorrt_llm_max_batch_size: int | None = None
+    model_service_tensorrt_llm_max_num_tokens: int | None = None
+    model_service_tensorrt_llm_max_seq_len: int | None = None
+    model_service_tensorrt_llm_embedded_host: str | None = None
+    model_service_tensorrt_llm_embedded_port: int | None = None
+    model_service_tensorrt_llm_embedded_backend: str | None = None
+    model_service_tensorrt_llm_server_start_timeout_seconds: float | None = None
+    model_service_tensorrt_llm_executable: str | None = None
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
@@ -57,8 +67,17 @@ class TensorRTLLMSection(BaseModel):
     model_id: str = "nvidia/Llama-3.3-70B-Instruct-NVFP4"
     serve_base_url: str | None = None
     engine_path: str | None = None
+    checkpoint_path: str | None = None
+    hf_cache_dir: str = "/root/.cache/huggingface"
     tokenizer_path: str | None = None
-    max_batch_size: int | None = Field(default=None, ge=1)
+    embedded_host: str = "127.0.0.1"
+    embedded_port: int = Field(default=8020, ge=1, le=65535)
+    embedded_backend: Literal["pytorch", "tensorrt"] = "tensorrt"
+    server_start_timeout_seconds: float = Field(default=180.0, gt=0)
+    executable: str = "trtllm-serve"
+    max_batch_size: int | None = Field(default=1, ge=1)
+    max_num_tokens: int | None = Field(default=2048, ge=1)
+    max_seq_len: int | None = Field(default=8192, ge=1)
     request_timeout_seconds: float = Field(default=30.0, gt=0)
     notes: str = ""
 
@@ -135,6 +154,14 @@ def get_app_config() -> AppConfig:
         settings.model_service_tensorrt_llm_engine_path
         or config.backends.tensorrt_llm.engine_path
     )
+    tensorrt_checkpoint_path = (
+        settings.model_service_tensorrt_llm_checkpoint_path
+        or config.backends.tensorrt_llm.checkpoint_path
+    )
+    tensorrt_hf_cache_dir = (
+        settings.model_service_tensorrt_llm_hf_cache_dir
+        or config.backends.tensorrt_llm.hf_cache_dir
+    )
     tensorrt_tokenizer_path = (
         settings.model_service_tensorrt_llm_tokenizer_path
         or config.backends.tensorrt_llm.tokenizer_path
@@ -151,6 +178,38 @@ def get_app_config() -> AppConfig:
         settings.model_service_tensorrt_llm_request_timeout_seconds
         or config.backends.tensorrt_llm.request_timeout_seconds
     )
+    tensorrt_max_batch_size = (
+        settings.model_service_tensorrt_llm_max_batch_size
+        or config.backends.tensorrt_llm.max_batch_size
+    )
+    tensorrt_max_num_tokens = (
+        settings.model_service_tensorrt_llm_max_num_tokens
+        or config.backends.tensorrt_llm.max_num_tokens
+    )
+    tensorrt_max_seq_len = (
+        settings.model_service_tensorrt_llm_max_seq_len
+        or config.backends.tensorrt_llm.max_seq_len
+    )
+    tensorrt_embedded_host = (
+        settings.model_service_tensorrt_llm_embedded_host
+        or config.backends.tensorrt_llm.embedded_host
+    )
+    tensorrt_embedded_port = (
+        settings.model_service_tensorrt_llm_embedded_port
+        or config.backends.tensorrt_llm.embedded_port
+    )
+    tensorrt_embedded_backend = (
+        settings.model_service_tensorrt_llm_embedded_backend
+        or config.backends.tensorrt_llm.embedded_backend
+    )
+    tensorrt_server_start_timeout = (
+        settings.model_service_tensorrt_llm_server_start_timeout_seconds
+        or config.backends.tensorrt_llm.server_start_timeout_seconds
+    )
+    tensorrt_executable = (
+        settings.model_service_tensorrt_llm_executable
+        or config.backends.tensorrt_llm.executable
+    )
 
     config.backends.tensorrt_llm = config.backends.tensorrt_llm.model_copy(
         update={
@@ -158,7 +217,17 @@ def get_app_config() -> AppConfig:
             "model_id": tensorrt_model_id,
             "serve_base_url": tensorrt_base_url,
             "engine_path": tensorrt_engine_path,
+            "checkpoint_path": tensorrt_checkpoint_path,
+            "hf_cache_dir": tensorrt_hf_cache_dir,
             "tokenizer_path": tensorrt_tokenizer_path,
+            "embedded_host": tensorrt_embedded_host,
+            "embedded_port": tensorrt_embedded_port,
+            "embedded_backend": tensorrt_embedded_backend,
+            "server_start_timeout_seconds": tensorrt_server_start_timeout,
+            "executable": tensorrt_executable,
+            "max_batch_size": tensorrt_max_batch_size,
+            "max_num_tokens": tensorrt_max_num_tokens,
+            "max_seq_len": tensorrt_max_seq_len,
             "request_timeout_seconds": tensorrt_timeout,
         }
     )

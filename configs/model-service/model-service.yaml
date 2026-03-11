@@ -25,10 +25,20 @@ backends:
     model_id: nvidia/Llama-3.3-70B-Instruct-NVFP4
     serve_base_url: http://tensorrt-llm:8000
     engine_path: /models/tensorrt-llm/llama-3.3-70b-instruct-nvfp4
+    checkpoint_path: null
+    hf_cache_dir: /root/.cache/huggingface
+    max_batch_size: 1
+    max_num_tokens: 2048
+    max_seq_len: 8192
     tokenizer_path: /models/tensorrt-llm/llama-3.3-70b-instruct-nvfp4
+    embedded_host: 127.0.0.1
+    embedded_port: 8020
+    embedded_backend: tensorrt
+    server_start_timeout_seconds: 180
+    executable: trtllm-serve
     max_batch_size: null
     request_timeout_seconds: 30
-    notes: Preferred NVIDIA-optimized backend. This checkpoint integrates against a local trtllm-serve endpoint or verifies prebuilt engine prerequisites honestly.
+    notes: Preferred NVIDIA-optimized backend. Proxy mode is working now. Engine mode can use either a prebuilt engine directory or a locally cached Hugging Face checkpoint plus tokenizer assets inside a TensorRT-capable model-service image.
   vllm:
     enabled: false
     notes: Alternative local serving backend if OpenAI-compatible semantics are prioritized.

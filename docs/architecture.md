@@ -38,12 +38,18 @@ What is real now:
 - explicit TensorRT-LLM integration path to a local `trtllm-serve` server with honest readiness behavior
 - verified end-to-end TensorRT-LLM response through `model-service`
 - Docker-internal access pattern via `http://model-service:8011`
+- engine-mode lifecycle wiring for a local embedded `trtllm-serve` process inside `model-service`
 
 What is still scaffolded:
 
-- embedded TensorRT-LLM runtime wiring inside `model-service`
 - vLLM runtime wiring
 - model artifact loading beyond config surfaces
+
+What still blocks real engine mode on a fresh machine:
+
+- no prebuilt TensorRT engine artifacts are stored in the repo
+- the default `model-service` image remains `python:3.12-slim`, which does not include `trtllm-serve`
+- automated engine build flow remains separate work
 
 Planned future backend options:
 
@@ -63,6 +69,7 @@ Current TensorRT-LLM checkpoint target:
 - model identifier: `nvidia/Llama-3.3-70B-Instruct-NVFP4`
 - default integration mode: proxy to a repo-managed local `trtllm-serve` sidecar
 - expected artifact directory for prebuilt engines: `/models/tensorrt-llm/llama-3.3-70b-instruct-nvfp4`
+- engine-mode runtime image expectation: a TensorRT-capable `model-service` image such as `nvcr.io/nvidia/tensorrt-llm/release:1.3.0rc3`
 
 ### `orchestrator-api`
 

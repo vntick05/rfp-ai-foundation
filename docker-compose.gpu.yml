@@ -3,3 +3,7 @@ services:
     gpus: all
   model-service:
     gpus: all
+    ipc: host
+    ulimits:
+      memlock: -1
+      stack: 67108864

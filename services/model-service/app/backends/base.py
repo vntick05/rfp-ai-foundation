@@ -56,6 +56,12 @@ class ChatResponse:
 
 
 class ModelBackend(Protocol):
+    def startup(self) -> None:
+        ...
+
+    def shutdown(self) -> None:
+        ...
+
     def descriptor(self) -> BackendDescriptor:
         ...
 

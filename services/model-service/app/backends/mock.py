@@ -27,6 +27,12 @@ class MockBackend(ModelBackend):
             status="ready",
         )
 
+    def startup(self) -> None:
+        return None
+
+    def shutdown(self) -> None:
+        return None
+
     def readiness(self) -> BackendReadiness:
         return BackendReadiness(
             ready=True,

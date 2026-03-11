@@ -1,4 +1,8 @@
 import json
+import shutil
+import subprocess
+from pathlib import Path
+from time import monotonic, sleep
 from typing import Iterator
 from urllib import error, request as urllib_request
 
@@ -17,6 +21,89 @@ class TensorRTLLMBackend(ModelBackend):
     def __init__(self, config: AppConfig):
         self._config = config
         self._runtime = config.backends.tensorrt_llm
+        self._embedded_process: subprocess.Popen | None = None
+        self._startup_error: str | None = None
+
+    def startup(self) -> None:
+        if self._runtime.mode != "engine":
+            return
+
+        self._startup_error = None
+        validation_error = self._validate_engine_mode_config()
+        if validation_error:
+            self._startup_error = validation_error
+            return
+
+        executable = shutil.which(self._runtime.executable)
+        if not executable:
+            self._startup_error = (
+                "TensorRT-LLM engine mode requires the "
+                f"'{self._runtime.executable}' executable inside the model-service container"
+            )
+            return
+
+        if self._embedded_process and self._embedded_process.poll() is None:
+            return
+
+        command = [
+            executable,
+            "serve",
+            self._serving_model_path() or "",
+            "--tokenizer",
+            self._resolved_tokenizer_path() or "",
+            "--backend",
+            self._runtime.embedded_backend,
+            "--host",
+            self._runtime.embedded_host,
+            "--port",
+            str(self._runtime.embedded_port),
+        ]
+        if self._runtime.max_batch_size:
+            command.extend(["--max_batch_size", str(self._runtime.max_batch_size)])
+        if self._runtime.max_num_tokens:
+            command.extend(["--max_num_tokens", str(self._runtime.max_num_tokens)])
+        if self._runtime.max_seq_len:
+            command.extend(["--max_seq_len", str(self._runtime.max_seq_len)])
+        self._embedded_process = subprocess.Popen(
+            command,
+            stdout=None,
+            stderr=None,
+            text=False,
+        )
+
+        deadline = monotonic() + self._runtime.server_start_timeout_seconds
+        last_error = "TensorRT-LLM embedded runtime did not report ready"
+        while monotonic() < deadline:
+            if self._embedded_process.poll() is not None:
+                self._startup_error = (
+                    "TensorRT-LLM embedded runtime exited during startup with code "
+                    f"{self._embedded_process.returncode}"
+                )
+                return
+            try:
+                self._request_json("/health")
+                self._startup_error = None
+                return
+            except RuntimeError as exc:
+                last_error = str(exc)
+                sleep(2)
+
+        self._startup_error = (
+            "Timed out waiting for embedded TensorRT-LLM runtime to become ready: "
+            f"{last_error}"
+        )
+
+    def shutdown(self) -> None:
+        if not self._embedded_process:
+            return
+        if self._embedded_process.poll() is None:
+            self._embedded_process.terminate()
+            try:
+                self._embedded_process.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                self._embedded_process.kill()
+                self._embedded_process.wait(timeout=5)
+        self._embedded_process = None
 
     def descriptor(self) -> BackendDescriptor:
         ready = self.readiness().ready
@@ -32,32 +119,33 @@ class TensorRTLLMBackend(ModelBackend):
 
     def readiness(self) -> BackendReadiness:
         if self._runtime.mode == "engine":
-            if not self._runtime.engine_path:
+            validation_error = self._validate_engine_mode_config()
+            if validation_error:
+                return BackendReadiness(ready=False, detail=validation_error)
+            if self._startup_error:
+                return BackendReadiness(ready=False, detail=self._startup_error)
+            if not self._embedded_process:
                 return BackendReadiness(
                     ready=False,
-                    detail="TensorRT-LLM engine mode requires engine_path",
+                    detail="TensorRT-LLM embedded runtime was not started by model-service",
                 )
-            if not path_exists(self._runtime.engine_path):
+            if self._embedded_process.poll() is not None:
                 return BackendReadiness(
                     ready=False,
-                    detail=f"TensorRT-LLM engine path not found: {self._runtime.engine_path}",
+                    detail=(
+                        "TensorRT-LLM embedded runtime exited with code "
+                        f"{self._embedded_process.returncode}"
+                    ),
                 )
-            if not self._runtime.tokenizer_path:
-                return BackendReadiness(
-                    ready=False,
-                    detail="TensorRT-LLM engine mode requires tokenizer_path",
-                )
-            if not path_exists(self._runtime.tokenizer_path):
-                return BackendReadiness(
-                    ready=False,
-                    detail=f"TensorRT-LLM tokenizer path not found: {self._runtime.tokenizer_path}",
-                )
+            try:
+                self._request_json("/health")
+            except RuntimeError as exc:
+                return BackendReadiness(ready=False, detail=str(exc))
             return BackendReadiness(
-                ready=False,
+                ready=True,
                 detail=(
-                    "TensorRT-LLM engine artifacts are configured, but embedded runtime "
-                    "execution is not implemented inside model-service; run trtllm-serve "
-                    "and use proxy mode for this checkpoint"
+                    "TensorRT-LLM engine backend is running inside model-service at "
+                    f"{self._serving_base_url()}"
                 ),
             )
 
@@ -115,9 +203,10 @@ class TensorRTLLMBackend(ModelBackend):
                         runtime_mode=self._runtime.mode,
                         metadata={
                             "provider": "tensorrt_llm",
-                            "serve_base_url": self._runtime.serve_base_url or "",
+                            "serve_base_url": self._serving_base_url(),
                             "engine_path": self._runtime.engine_path or "",
-                            "tokenizer_path": self._runtime.tokenizer_path or "",
+                            "checkpoint_path": self._serving_model_path() or "",
+                            "tokenizer_path": self._resolved_tokenizer_path() or "",
                         },
                     )
                 )
@@ -132,9 +221,10 @@ class TensorRTLLMBackend(ModelBackend):
                 runtime_mode=self._runtime.mode,
                 metadata={
                     "provider": "tensorrt_llm",
-                    "serve_base_url": self._runtime.serve_base_url or "",
+                    "serve_base_url": self._serving_base_url(),
                     "engine_path": self._runtime.engine_path or "",
-                    "tokenizer_path": self._runtime.tokenizer_path or "",
+                    "checkpoint_path": self._serving_model_path() or "",
+                    "tokenizer_path": self._resolved_tokenizer_path() or "",
                 },
             )
         ]
@@ -195,10 +285,11 @@ class TensorRTLLMBackend(ModelBackend):
         method: str = "GET",
         payload: dict[str, object] | None = None,
     ) -> dict[str, object]:
-        if not self._runtime.serve_base_url:
+        base_url = self._serving_base_url()
+        if not base_url:
             raise RuntimeError("TensorRT-LLM serve_base_url is not configured")
 
-        url = f"{self._runtime.serve_base_url.rstrip('/')}{path}"
+        url = f"{base_url.rstrip('/')}{path}"
         data: bytes | None = None
         headers = {"Accept": "application/json"}
         if payload is not None:
@@ -230,10 +321,11 @@ class TensorRTLLMBackend(ModelBackend):
         path: str,
         payload: dict[str, object],
     ) -> Iterator[bytes]:
-        if not self._runtime.serve_base_url:
+        base_url = self._serving_base_url()
+        if not base_url:
             raise RuntimeError("TensorRT-LLM serve_base_url is not configured")
 
-        url = f"{self._runtime.serve_base_url.rstrip('/')}{path}"
+        url = f"{base_url.rstrip('/')}{path}"
         data = json.dumps(payload).encode("utf-8")
         req = urllib_request.Request(
             url=url,
@@ -260,3 +352,94 @@ class TensorRTLLMBackend(ModelBackend):
             raise RuntimeError(
                 f"TensorRT-LLM server is not reachable at {url}: {exc.reason}"
             ) from exc
+
+    def _serving_base_url(self) -> str | None:
+        if self._runtime.mode == "engine":
+            return f"http://{self._runtime.embedded_host}:{self._runtime.embedded_port}"
+        return self._runtime.serve_base_url
+
+    def _validate_engine_mode_config(self) -> str | None:
+        serving_model_path = self._serving_model_path()
+        if not serving_model_path:
+            return (
+                "TensorRT-LLM engine mode requires either prebuilt engine artifacts or "
+                "a local checkpoint path in the Hugging Face cache"
+            )
+        if not path_exists(serving_model_path):
+            return f"TensorRT-LLM model source path not found: {serving_model_path}"
+        if self._runtime.engine_path and path_exists(self._runtime.engine_path):
+            engine_path = Path(self._runtime.engine_path)
+            if engine_path.is_dir() and not any(item.name != ".gitkeep" for item in engine_path.iterdir()):
+                checkpoint_path = self._resolved_checkpoint_path()
+                if not checkpoint_path:
+                    return (
+                        "TensorRT-LLM engine path exists but does not contain engine artifacts: "
+                        f"{self._runtime.engine_path}"
+                    )
+        tokenizer_path_value = self._resolved_tokenizer_path()
+        if not tokenizer_path_value:
+            return (
+                "TensorRT-LLM engine mode requires tokenizer assets, either via "
+                "tokenizer_path or the local checkpoint snapshot"
+            )
+        if not path_exists(tokenizer_path_value):
+            return f"TensorRT-LLM tokenizer path not found: {tokenizer_path_value}"
+        tokenizer_path = Path(tokenizer_path_value)
+        tokenizer_candidates = (
+            "tokenizer.json",
+            "tokenizer.model",
+            "tokenizer_config.json",
+        )
+        if tokenizer_path.is_dir() and not any((tokenizer_path / candidate).exists() for candidate in tokenizer_candidates):
+            return (
+                "TensorRT-LLM tokenizer path exists but does not contain tokenizer assets: "
+                f"{tokenizer_path_value}"
+            )
+        return None
+
+    def _resolved_checkpoint_path(self) -> str | None:
+        if self._runtime.checkpoint_path and path_exists(self._runtime.checkpoint_path):
+            return self._runtime.checkpoint_path
+
+        model_slug = self._runtime.model_id.replace("/", "--")
+        refs_main_path = (
+            Path(self._runtime.hf_cache_dir)
+            / "hub"
+            / f"models--{model_slug}"
+            / "refs"
+            / "main"
+        )
+        if not refs_main_path.exists():
+            return None
+        snapshot_ref = refs_main_path.read_text(encoding="utf-8").strip()
+        if not snapshot_ref:
+            return None
+        snapshot_path = (
+            Path(self._runtime.hf_cache_dir)
+            / "hub"
+            / f"models--{model_slug}"
+            / "snapshots"
+            / snapshot_ref
+        )
+        return str(snapshot_path) if snapshot_path.exists() else None
+
+    def _resolved_tokenizer_path(self) -> str | None:
+        if self._runtime.tokenizer_path and path_exists(self._runtime.tokenizer_path):
+            tokenizer_path = Path(self._runtime.tokenizer_path)
+            tokenizer_candidates = (
+                "tokenizer.json",
+                "tokenizer.model",
+                "tokenizer_config.json",
+            )
+            if tokenizer_path.is_file():
+                return self._runtime.tokenizer_path
+            if tokenizer_path.is_dir() and any((tokenizer_path / candidate).exists() for candidate in tokenizer_candidates):
+                return self._runtime.tokenizer_path
+        return self._resolved_checkpoint_path()
+
+    def _serving_model_path(self) -> str | None:
+        if self._runtime.engine_path and path_exists(self._runtime.engine_path):
+            engine_path = Path(self._runtime.engine_path)
+            if engine_path.is_dir() and any(item.name != ".gitkeep" for item in engine_path.iterdir()):
+                return self._runtime.engine_path
+        return self._resolved_checkpoint_path()

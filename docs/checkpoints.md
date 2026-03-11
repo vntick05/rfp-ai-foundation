@@ -238,3 +238,34 @@ Recommended commit message:
 ```text
 feat: add streaming chat completions to model-service
 ```
+
+## Checkpoint 8: Model-Service Engine-Mode Wiring
+
+Definition:
+
+- `model-service` can manage a local embedded `trtllm-serve` process when `MODEL_SERVICE_TENSORRT_LLM_MODE=engine`
+- engine-mode readiness reports exact artifact and runtime blockers
+- container build surface supports a TensorRT-capable `model-service` base image
+- the service boundary remains unchanged
+
+Verify locally:
+
+1. Build `model-service` with a TensorRT-capable base image
+2. Set `MODEL_SERVICE_BACKEND=tensorrt_llm`
+3. Set `MODEL_SERVICE_TENSORRT_LLM_MODE=engine`
+4. Ensure engine and tokenizer assets exist at the configured paths
+5. Start `model-service`
+6. Check `GET /readyz`
+7. Send `POST /v1/chat/completions`
+
+Known gaps in this checkpoint:
+
+- no engine artifacts are stored in the repo
+- no automated engine build flow yet
+- engine-mode end-to-end inference cannot succeed without those artifacts
+
+Recommended commit message:
+
+```text
+feat: add engine-mode runtime wiring to model-service
+```
